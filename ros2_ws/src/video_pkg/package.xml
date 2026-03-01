@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>video_pkg</name>
+  <version>0.0.0</version>
+  <description>Unitree Go2 video publish(compressedimage) node and OpenCV viewer node</description>
+  <maintainer email="gyeongseok8727@gmail.com">seok</maintainer>
+  <license>Apache-2.0</license>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+  
+  <buildtool_depend>ament_python</buildtool_depend>
+  
+  
+  <!-- ROS 런타임 의존성 -->
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  
+  <!-- 퍼블리셔에 필요 (pip로 설치) -->
+  <exec_depend>unitree_sdk2py</exec_depend>
+
+
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

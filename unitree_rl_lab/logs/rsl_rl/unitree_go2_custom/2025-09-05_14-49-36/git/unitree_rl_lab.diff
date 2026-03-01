@@ -1,0 +1,434 @@
+--- git status ---
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   deploy/include/isaaclab/envs/mdp/observations.h
+	modified:   deploy/robots/go2/CMakeLists.txt
+	modified:   scripts/rsl_rl/train.py
+	modified:   source/unitree_rl_lab/unitree_rl_lab/assets/robots/unitree.py
+	modified:   source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/mdp/rewards.py
+	modified:   source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/go2/__init__.py
+	modified:   source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/go2/velocity_env_cfg.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/mdp/env_info.txt
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/deploy/include/isaaclab/envs/mdp/observations.h b/deploy/include/isaaclab/envs/mdp/observations.h
+index 23a277d..2778d79 100644
+--- a/deploy/include/isaaclab/envs/mdp/observations.h
++++ b/deploy/include/isaaclab/envs/mdp/observations.h
+@@ -4,6 +4,7 @@
+ #pragma once
+ 
+ #include "isaaclab/envs/manager_based_rl_env.h"
++#include "FSM/FSMState.h"
+ 
+ namespace isaaclab
+ {
+@@ -66,14 +67,34 @@ REGISTER_OBSERVATION(last_action)
+ 
+ REGISTER_OBSERVATION(velocity_commands)
+ {
+-    std::vector<float> obs(3);
+-    auto & joystick = env->robot->data.joystick;
+-
++    std::vector<float> obs(3, 0.0f);
+     auto cfg = env->cfg["commands"]["base_velocity"]["ranges"];
+ 
+-    obs[0] = std::clamp(joystick->ly(), cfg["lin_vel_x"][0].as<float>(), cfg["lin_vel_x"][1].as<float>());
+-    obs[1] = std::clamp(-joystick->lx(), cfg["lin_vel_y"][0].as<float>(), cfg["lin_vel_y"][1].as<float>());
+-    obs[2] = std::clamp(-joystick->rx(), cfg["ang_vel_z"][0].as<float>(), cfg["ang_vel_z"][1].as<float>());
++    // Keyboard 전역 포인터를 FSMState에 이미 두셨으니 그걸 사용
++    if (FSMState::keyboard) {
++        FSMState::keyboard->update();
++        std::string key = FSMState::keyboard->key();
++
++        float vx = 0, vy = 0, wz = 0;
++
++        if (key == "w" || key == "up")    vx =  1.0f;   // 전진
++        if (key == "s" || key == "down")  vx = -1.0f;   // 후진
++        if (key == "a" || key == "left")  vy =  1.0f;   // 좌측
++        if (key == "d" || key == "right") vy = -1.0f;   // 우측
++        if (key == "q")                   wz =  1.0f;   // 좌회전
++        if (key == "e")                   wz = -1.0f;   // 우회전
++
++        // 범위 클램프 (deploy.yaml에 정의된 min/max에 맞춤)
++        obs[0] = std::clamp(vx * cfg["lin_vel_x"][1].as<float>(),
++                            cfg["lin_vel_x"][0].as<float>(),
++                            cfg["lin_vel_x"][1].as<float>());
++        obs[1] = std::clamp(vy * cfg["lin_vel_y"][1].as<float>(),
++                            cfg["lin_vel_y"][0].as<float>(),
++                            cfg["lin_vel_y"][1].as<float>());
++        obs[2] = std::clamp(wz * cfg["ang_vel_z"][1].as<float>(),
++                            cfg["ang_vel_z"][0].as<float>(),
++                            cfg["ang_vel_z"][1].as<float>());
++    }
+ 
+     return obs;
+ }
+diff --git a/deploy/robots/go2/CMakeLists.txt b/deploy/robots/go2/CMakeLists.txt
+index a0a3c08..7e3d256 100644
+--- a/deploy/robots/go2/CMakeLists.txt
++++ b/deploy/robots/go2/CMakeLists.txt
+@@ -17,7 +17,7 @@ include_directories(
+ link_libraries(
+   unitree_sdk2 ddsc ddscxx rt pthread # dds
+   libboost_program_options.a libyaml-cpp.a fmt
+-  ${PROJECT_SOURCE_DIR}/../../thirdparty/onnxruntime-linux-x64-1.22.0/lib/libonnxruntime.so
++  ${PROJECT_SOURCE_DIR}/../../thirdparty/onnxruntime-linux-x64-1.22.0/lib/libonnxruntime.so.1.22.0
+ )
+ 
+ file(GLOB_RECURSE ADD_SRC_LIST
+diff --git a/scripts/rsl_rl/train.py b/scripts/rsl_rl/train.py
+index 772a426..9845d7d 100644
+--- a/scripts/rsl_rl/train.py
++++ b/scripts/rsl_rl/train.py
+@@ -168,7 +168,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
+     # write git state to logs
+     runner.add_git_repo_to_log(__file__)
+     # load the checkpoint
++    agent_cfg.resume = True
+     if agent_cfg.resume or agent_cfg.algorithm.class_name == "Distillation":
++        resume_path = "/home/posco/unitree_rl_lab/logs/rsl_rl/unitree_go2_custom/2025-09-05_01-55-21/model_14300.pt"
+         print(f"[INFO]: Loading model checkpoint from: {resume_path}")
+         # load previously trained model
+         runner.load(resume_path)
+diff --git a/source/unitree_rl_lab/unitree_rl_lab/assets/robots/unitree.py b/source/unitree_rl_lab/unitree_rl_lab/assets/robots/unitree.py
+index 4e875b7..66221f5 100644
+--- a/source/unitree_rl_lab/unitree_rl_lab/assets/robots/unitree.py
++++ b/source/unitree_rl_lab/unitree_rl_lab/assets/robots/unitree.py
+@@ -27,7 +27,7 @@ class UnitreeArticulationCfg(ArticulationCfg):
+     soft_joint_pos_limit_factor = 0.9
+ 
+ 
+-UNITREE_MODEL_DIR = MISSING
++UNITREE_MODEL_DIR = "/home/posco/unitree_model"
+ 
+ UNITREE_GO2_CFG = UnitreeArticulationCfg(
+     spawn=sim_utils.UsdFileCfg(
+diff --git a/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/mdp/rewards.py b/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/mdp/rewards.py
+index 565da07..b3fa2a3 100644
+--- a/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/mdp/rewards.py
++++ b/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/mdp/rewards.py
+@@ -224,3 +224,51 @@ def joint_mirror(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, mirror_joint
+         )
+     reward *= 1 / len(mirror_joints) if len(mirror_joints) > 0 else 0
+     return reward
++
++# custom rewards
++def body_height(
++    env: ManagerBasedRLEnv, std: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), target_height: float = 0.15
++) -> torch.Tensor:
++    """Reward the agent for maintaining a specific body height."""
++    asset: RigidObject = env.scene[asset_cfg.name]
++    current_height = asset.data.root_pos_w[:, 2]
++    # print(f"Current body height: {current_height}")
++    height_error = torch.square(10 * (current_height - target_height)) # 10cm = 1
++    return torch.exp(-height_error / std**2)
++
++def down_joint_position_penalty(    
++    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, stand_still_scale: float, velocity_threshold: float) -> torch.Tensor:    
++    """Penalize joint position error from bend down on the articulation."""    # extract the used quantities (to enable type-hinting)    
++    asset: Articulation = env.scene[asset_cfg.name]    
++    cmd = torch.linalg.norm(env.command_manager.get_command("base_velocity"), dim=1)    
++    body_vel = torch.linalg.norm(asset.data.root_lin_vel_b[:, :2], dim=1)
++    # print(asset.data.default_joint_pos.size()) # [4096, 12]    
++    bend_down_angle = torch.tensor([0.0, -0.0, 0.0, -0.0, 1.136, 1.136, 1.136, 1.136, -2.297, -2.297, -2.297, -2.297], device=env.device)  # Bend down to a specific angle        
++    N, DoF = asset.data.joint_pos.shape
++    bend_down_angle = bend_down_angle.unsqueeze(0).repeat(N, 1)
++    pos_error = asset.data.joint_pos - bend_down_angle
++    reward = torch.linalg.norm((pos_error), dim=1)    
++    return torch.where(torch.logical_or(cmd > 0.0, body_vel > velocity_threshold), reward, stand_still_scale * reward)
++
++def slow_track_lin_vel_xy_exp(
++    env: ManagerBasedRLEnv, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), scale: float = 0.8
++) -> torch.Tensor:
++    """Reward tracking of linear velocity commands (xy axes) using exponential kernel."""
++    # extract the used quantities (to enable type-hinting)
++    asset: RigidObject = env.scene[asset_cfg.name]
++    # compute the error
++    lin_vel_error = torch.sum(
++        torch.square(scale * env.command_manager.get_command(command_name)[:, :2] - asset.data.root_lin_vel_b[:, :2]),
++        dim=1,
++    )
++    return torch.exp(-lin_vel_error / std**2)
++
++def slow_track_ang_vel_z_exp(
++    env: ManagerBasedRLEnv, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), scale: float = 0.8
++) -> torch.Tensor:
++    """Reward tracking of angular velocity commands (yaw) using exponential kernel."""
++    # extract the used quantities (to enable type-hinting)
++    asset: RigidObject = env.scene[asset_cfg.name]
++    # compute the error
++    ang_vel_error = torch.square(scale * env.command_manager.get_command(command_name)[:, 2] - asset.data.root_ang_vel_b[:, 2])
++    return torch.exp(-ang_vel_error / std**2)
+\ No newline at end of file
+diff --git a/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/go2/__init__.py b/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/go2/__init__.py
+index 0bc22a3..db569ee 100644
+--- a/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/go2/__init__.py
++++ b/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/go2/__init__.py
+@@ -1,7 +1,18 @@
+ import gymnasium as gym
+ 
+ gym.register(
+-    id="Unitree-Go2-Velocity",
++    id="Unitree-Go2-Custom",  # "Unitree-Go2-Velocity",
++    entry_point="isaaclab.envs:ManagerBasedRLEnv",
++    disable_env_checker=True,
++    kwargs={
++        "env_cfg_entry_point": f"{__name__}.velocity_env_cfg:CustomRobotEnvCfg",
++        "play_env_cfg_entry_point": f"{__name__}.velocity_env_cfg:CustomRobotPlayEnvCfg",
++        "rsl_rl_cfg_entry_point": f"unitree_rl_lab.tasks.locomotion.agents.rsl_rl_ppo_cfg:BasePPORunnerCfg",
++    },
++)
++
++gym.register(
++    id= "Unitree-Go2-Velocity",
+     entry_point="isaaclab.envs:ManagerBasedRLEnv",
+     disable_env_checker=True,
+     kwargs={
+@@ -10,3 +21,4 @@ gym.register(
+         "rsl_rl_cfg_entry_point": f"unitree_rl_lab.tasks.locomotion.agents.rsl_rl_ppo_cfg:BasePPORunnerCfg",
+     },
+ )
++
+diff --git a/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/go2/velocity_env_cfg.py b/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/go2/velocity_env_cfg.py
+index fd811ac..8b4a649 100644
+--- a/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/go2/velocity_env_cfg.py
++++ b/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/go2/velocity_env_cfg.py
+@@ -33,18 +33,18 @@ COBBLESTONE_ROAD_CFG = terrain_gen.TerrainGeneratorCfg(
+     use_cache=False,
+     sub_terrains={
+         "flat": terrain_gen.MeshPlaneTerrainCfg(proportion=0.1),
+-        # "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
+-        #     proportion=0.1, noise_range=(0.01, 0.06), noise_step=0.01, border_width=0.25
+-        # ),
++        "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
++            proportion=0.1, noise_range=(0.01, 0.06), noise_step=0.01, border_width=0.25
++        ),
+         # "hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
+         #     proportion=0.1, slope_range=(0.0, 0.4), platform_width=2.0, border_width=0.25
+         # ),
+         # "hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
+         #     proportion=0.1, slope_range=(0.0, 0.4), platform_width=2.0, border_width=0.25
+         # ),
+-        # "boxes": terrain_gen.MeshRandomGridTerrainCfg(
+-        #     proportion=0.2, grid_width=0.45, grid_height_range=(0.05, 0.2), platform_width=2.0
+-        # ),
++        "boxes": terrain_gen.MeshRandomGridTerrainCfg(
++            proportion=0.2, grid_width=0.45, grid_height_range=(0.05, 0.2), platform_width=2.0
++        ),
+         # "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
+         #     proportion=0.2,
+         #     step_height_range=(0.05, 0.23),
+@@ -271,10 +271,10 @@ class RewardsCfg:
+ 
+     # -- task
+     track_lin_vel_xy = RewTerm(
+-        func=mdp.track_lin_vel_xy_exp, weight=1.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
++        func=mdp.slow_track_lin_vel_xy_exp, weight=1.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25), "scale": 1.5}
+     )
+     track_ang_vel_z = RewTerm(
+-        func=mdp.track_ang_vel_z_exp, weight=0.75, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
++        func=mdp.slow_track_ang_vel_z_exp, weight=0.75, params={"command_name": "base_velocity", "std": math.sqrt(0.25), "scale": 1.5}
+     )
+ 
+     # -- base
+@@ -342,6 +342,92 @@ class RewardsCfg:
+         },
+     )
+ 
++@configclass
++class CustomRewardsCfg:
++    """CustomReward terms for the MDP."""
++
++    # -- task
++    track_lin_vel_xy = RewTerm(
++        func=mdp.slow_track_lin_vel_xy_exp, weight=1.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25), "scale": 0.6}
++    )
++    track_ang_vel_z = RewTerm(
++        func=mdp.slow_track_ang_vel_z_exp, weight=0.75, params={"command_name": "base_velocity", "std": math.sqrt(0.25), "scale": 0.6}
++    )
++
++    # -- base
++    base_linear_velocity = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
++    base_angular_velocity = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
++    joint_vel = RewTerm(func=mdp.joint_vel_l2, weight=-0.001)
++    joint_acc = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
++    joint_torques = RewTerm(func=mdp.joint_torques_l2, weight=-2e-4)
++    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.1)
++    dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=-10.0)
++    energy = RewTerm(func=mdp.energy, weight=-2e-5)
++
++    # -- robot
++    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-2.5)
++
++    # -- feet
++    feet_air_time = RewTerm(
++        func=mdp.feet_air_time,
++        weight=0.1,
++        params={
++            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_foot"),
++            "command_name": "base_velocity",
++            "threshold": 0.5,
++        },
++    )
++    air_time_variance = RewTerm(
++        func=mdp.air_time_variance_penalty,
++        weight=-1.0,
++        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_foot")},
++    )
++    feet_slide = RewTerm(
++        func=mdp.feet_slide,
++        weight=-0.1,
++        params={
++            "asset_cfg": SceneEntityCfg("robot", body_names=".*_foot"),
++            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_foot"),
++        },
++    )
++    # feet_contact_forces = RewTerm(
++    #     func=mdp.contact_forces,
++    #     weight=-0.02,
++    #     params={
++    #         "threshold": 100.0,
++    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_foot"),
++    #     },
++    # )
++
++    # -- other
++    undesired_contacts = RewTerm(
++        func=mdp.undesired_contacts,
++        weight=-1,
++        params={
++            "threshold": 1,
++            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["Head_.*", ".*_hip", ".*_thigh", ".*_calf"]),
++        },
++    )
++
++    down_joint_pos = RewTerm(
++        func=mdp.down_joint_position_penalty,
++        weight=-0.7,
++        params={
++            "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
++            "stand_still_scale": 0.3,
++            "velocity_threshold": 0.3,
++        },
++    )
++
++    body_height = RewTerm(
++        func=mdp.body_height,
++        weight=1.5,
++        params={
++            "std": 2.0,
++            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
++            "target_height": 0.15,
++        },
++    )
+ 
+ @configclass
+ class TerminationsCfg:
+@@ -403,7 +489,72 @@ class RobotEnvCfg(ManagerBasedRLEnvCfg):
+         else:
+             if self.scene.terrain.terrain_generator is not None:
+                 self.scene.terrain.terrain_generator.curriculum = False
++        
++        self.scene.terrain.terrain_generator.sub_terrains["boxes"].grid_height_range = (0.025, 0.1)
++        self.scene.terrain.terrain_generator.sub_terrains["random_rough"].noise_range = (0.01, 0.06)
++        self.scene.terrain.terrain_generator.sub_terrains["random_rough"].noise_step = 0.01
++
++        self.events.add_base_mass.params["mass_distribution_params"] = (0.0, 1.5)
++        self.events.add_base_mass.params["operation"] = "add"
++        self.events.add_base_mass.params["asset_cfg"].body_names = "base"
++
++        self.events.base_external_force_torque.params["asset_cfg"].body_names = "base"
++        self.events.base_external_force_torque.params["force_range"] = (-15.0, 15.0)    # 외력 0~15N
++        self.events.base_external_force_torque.params["torque_range"] = (-5.0, 5.0)  # 랜덤 토크(N·m)
++
++
++@configclass
++class CustomRobotEnvCfg(ManagerBasedRLEnvCfg):
++    """Configuration for the locomotion velocity-tracking environment."""
++
++    # Scene settings
++    scene: RobotSceneCfg = RobotSceneCfg(num_envs=4096, env_spacing=2.5)
++    # Basic settings
++    observations: ObservationsCfg = ObservationsCfg()
++    actions: ActionsCfg = ActionsCfg()
++    commands: CommandsCfg = CommandsCfg()
++    # MDP settings
++    rewards: RewardsCfg = CustomRewardsCfg()
++    terminations: TerminationsCfg = TerminationsCfg()
++    events: EventCfg = EventCfg()
++    curriculum: CurriculumCfg = CurriculumCfg()
++
++    def __post_init__(self):
++        """Post initialization."""
++        # general settings
++        self.decimation = 4
++        self.episode_length_s = 20.0
++        # simulation settings
++        self.sim.dt = 0.005
++        self.sim.render_interval = self.decimation
++        self.sim.physics_material = self.scene.terrain.physics_material
++        self.sim.physx.gpu_max_rigid_patch_count = 10 * 2**15
++
++        # update sensor update periods
++        # we tick all the sensors based on the smallest update period (physics update period)
++        self.scene.contact_forces.update_period = self.sim.dt
++        self.scene.height_scanner.update_period = self.decimation * self.sim.dt
++
++        # check if terrain levels curriculum is enabled - if so, enable curriculum for terrain generator
++        # this generates terrains with increasing difficulty and is useful for training
++        if getattr(self.curriculum, "terrain_levels", None) is not None:
++            if self.scene.terrain.terrain_generator is not None:
++                self.scene.terrain.terrain_generator.curriculum = True
++        else:
++            if self.scene.terrain.terrain_generator is not None:
++                self.scene.terrain.terrain_generator.curriculum = False
++                
++        # self.scene.terrain.terrain_generator.sub_terrains["boxes"].grid_height_range = (0.025, 0.1)
++        self.scene.terrain.terrain_generator.sub_terrains["random_rough"].noise_range = (0.01, 0.06)
++        self.scene.terrain.terrain_generator.sub_terrains["random_rough"].noise_step = 0.01
++
++        self.events.add_base_mass.params["mass_distribution_params"] = (0.0, 1.5)
++        self.events.add_base_mass.params["operation"] = "add"
++        self.events.add_base_mass.params["asset_cfg"].body_names = "base"
+ 
++        self.events.base_external_force_torque.params["asset_cfg"].body_names = "base"
++        self.events.base_external_force_torque.params["force_range"] = (-15.0, 15.0)    # 외력 0~15N
++        self.events.base_external_force_torque.params["torque_range"] = (-5.0, 5.0)  # 랜덤 토크(N·m)
+ 
+ @configclass
+ class RobotPlayEnvCfg(RobotEnvCfg):
+@@ -413,3 +564,22 @@ class RobotPlayEnvCfg(RobotEnvCfg):
+         self.scene.terrain.terrain_generator.num_rows = 2
+         self.scene.terrain.terrain_generator.num_cols = 1
+         self.commands.base_velocity.ranges = self.commands.base_velocity.limit_ranges
++
++        # spawn the robot randomly in the grid (instead of their terrain levels)
++        self.scene.terrain.max_init_terrain_level = None
++        # reduce the number of terrains to save memory
++        if self.scene.terrain.terrain_generator is not None:
++            self.scene.terrain.terrain_generator.num_rows = 5
++            self.scene.terrain.terrain_generator.num_cols = 5
++            self.scene.terrain.terrain_generator.curriculum = False
++
++@configclass
++class CustomRobotPlayEnvCfg(RobotEnvCfg):
++    rewards: RewardsCfg = CustomRewardsCfg()
++    def __post_init__(self):
++        super().__post_init__() 
++
++        self.scene.num_envs = 32
++        self.scene.terrain.terrain_generator.num_rows = 2
++        self.scene.terrain.terrain_generator.num_cols = 1
++        self.commands.base_velocity.ranges = self.commands.base_velocity.limit_ranges
+\ No newline at end of file
