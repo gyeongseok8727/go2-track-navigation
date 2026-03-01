@@ -7,7 +7,7 @@ Unitree Go2 로봇의 자율주행을 위해 NAV2, 학습시킨 RL policy, YOLO,
 
 
 ## Mission Courses  
-<img width="607" height="384" alt="Image" src="https://github.com/user-attachments/assets/06e09826-1f00-40db-a01c-d7b7c3dcbae5" />
+<img width="607" height="384" alt="Image" src="https://github.com/user-attachments/assets/33692ab0-4460-43a4-88fc-197ccab92eb7" />
 
 코스별 미션과 주행전략은 다음과 같다.  
 
