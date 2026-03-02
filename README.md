@@ -3,7 +3,7 @@
 ## Overview
 **Code for unitree GO2 navigation around given course in POSCO Industrial AI-Robot Challenge 2025, made by Team 용과함께 from MR, KAIST**
 
-Unitree Go2 로봇의 자율주행을 위해 
+Unitree Go2 로봇의 자율주행을 위해  
 ROS2를 기반으로
 NAV2의 navigation, 
 p제어,
