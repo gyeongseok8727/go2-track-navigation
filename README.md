@@ -673,10 +673,15 @@ enqueue 한다.
 #### 기타 코드들
 
 lidar_test.py  
-    테스트용: 라이다로 벽 가운데 유지하게 vy p제어 하면서 vx 1.0 테스트  
+
+    테스트용: 라이다로 벽 가운데 유지하게 vy p제어 하면서 vx 1.0 테스트 
+
 map0_total.py  
+
     하드코딩으로 벽간 거리 일정하게 유지하며 점프 앞까지 이동, 점프, 장애물 앞까지 이동하도록  
+
 map3_total.py  
+
     하드코딩임   
     wallfollower로 1초 전진  
     좌회전  
@@ -687,24 +692,29 @@ map3_total.py
     -->계단 내려온 다음이다.  
 
 obstacle_lidar.py  
+
         라이다로 장애물 보고 지나가기
 
 pose_estimator.py  
+
     rviz 없이 pose estimate 가능하도록 함  
     known pose 모드: /initialpose로 발행한 위치로부터 localization  
     global localization 모드: 맵 전체에 대해 localization  
     이는 코드에서 사용 안함
 
 process_executor.py  
+
     ExecConfig, BaseProcessExecutor 정의해둠.  
     다른 코드에서 이를 import해 사용한다.
 
 
 run_localization_hardcoding2.py  
+
     오류난 경우 마지막 직선 코스의 crosswalk에서 부터 시작하는 코드.  
     localization 켜고 /initialpose 보내서  
     crosswalk 건너기
 
 crosswalk_amcl_lidar_clean_finish_different_node.py  
+
     신호등 본 다음에 trotrun으로 달리는데  
     시간 제한 두고, yaw, vy 각각 p제어 하면서 달리기
