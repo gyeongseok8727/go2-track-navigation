@@ -4,18 +4,18 @@
 **Code for unitree GO2 navigation around given course in POSCO Industrial AI-Robot Challenge 2025, made by Team 용과함께 from MR, KAIST**
 
 Unitree Go2 로봇의 자율주행을 위해  
-ROS2를 기반으로
-NAV2의 navigation, 
-p제어,
-학습시킨 RL policy, 
-YOLO,
-unitree sdk의 highlevel api인 SportClient
+ROS2를 기반으로  
+NAV2의 navigation,  
+p제어,  
+학습시킨 RL policy,  
+YOLO,  
+unitree sdk의 highlevel api인 SportClient  
 등을 통합하여 작성했다.
 
-p제어는 
-라이다를 이용한 좌우 벽까지의 거리, 
-lowstate의 yaw값, 
-또는 NAV2의 localization의 amcl_pose의 yaw 값
+p제어는  
+라이다를 이용한 좌우 벽까지의 거리,  
+lowstate의 yaw값,  
+또는 NAV2의 localization의 amcl_pose의 yaw 값  
 을 이용했다.  
 
 
@@ -24,7 +24,7 @@ Unitree Go2 로봇에 별도 PC(Intel NUC 11 Essential Kit)를 달고 GO2의 내
 
 이 깃허브는 해당 NUC PC에서 작성한 코드 및 파일을 담고있다.
 
-GO2 Edu 모델을 이용해 개발했고, 라이다는 Hesai XT16을 이용했다.
+GO2 Edu 모델을 이용해 개발했고, 라이다는 Hesai XT16을 이용했다.  
 매핑 및 localization은 모두 nav2에 포함된 slam 및 amcl 기반을 이용했다.
 
 
