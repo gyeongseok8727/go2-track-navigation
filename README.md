@@ -363,42 +363,42 @@ run_localization_hardcoding0.py
     -(점프, 달리기 모드 켜기, 횡단보도 건너기, 장애물 회피 코스, 계단 주행 코스 등)
 
 
-자세한 설명은 다음과 같다.  
+자세한 설명은 아래와 같다.  
 
 go2_move에서는 CmdVelSubscriber 노드를 정의하고 실행한다.  
-해당 노드는 unitree python sdk2를 이용해 go2에 몇 가지 운동 명령을 보낸다.  
-대표적으로 import하는 것은 unitree_sdk2py에서 SportClient(이하 sc)와 MotionSwitcherClient(이하 msc),  
-subprocess,  
-그리고 low level 제어 바이너리 코드 실행을 위한 process_executor의 BaseProcessExecutor, ExecConfig 이다.
 
+    해당 노드는 unitree python sdk2를 이용해 go2에 몇 가지 운동 명령을 보낸다.  
+    대표적으로 import하는 것은 unitree_sdk2py에서 SportClient(이하 sc)와 MotionSwitcherClient(이하 msc),  
+    subprocess,  
+    그리고 low level 제어 바이너리 코드 실행을 위한 process_executor의 BaseProcessExecutor, ExecConfig 이다.
 
 노드(클래스)의 플래그 변수는 self.mission, self.stop, self.mode이 있다.
 
-노드를 생성하면 다음을 진행한다.  
-sc, msc 연결, 후에 걸을 수 있도록 BalanceStand해두기,  
-저자세 주행에 필요한 low level 코드 실행 위한 프로세스 객체인 self.ex 생성, (unitree_rl_lab/deploy/robots/go2/build/go2_ctrl)
+    노드를 생성하면 다음을 진행한다.  
+    sc, msc 연결, 후에 걸을 수 있도록 BalanceStand해두기,  
+    저자세 주행에 필요한 low level 코드 실행 위한 프로세스 객체인 self.ex 생성, (unitree_rl_lab/deploy/robots/go2/build/go2_ctrl)
 
-publisher로 /mode_cmd를 pub한다.
+    publisher로 /mode_cmd를 pub한다.
 
-subscriber로 'mission', 'cmd_vel', 'stop_cmd'을 sub한다.  
-이 셋의 콜백 함수는 아래의 기능을 한다.
+    subscriber로 'mission', 'cmd_vel', 'stop_cmd'을 sub한다.  
+    이 셋의 콜백 함수는 아래의 기능을 한다.
 
 cmd_vel의 콜백함수에선 self.mission이 None, self.stop이 False라면 msg: Twist를 vx, vy, wz로 변환 후 속도 클리핑 등을 거쳐서 SportClient에서 받는 형식으로 변환하여 highlevel 제어 명령을 go2에 보낸다.
 
 mission의 콜백 함수에선 self.mission에 토픽으로 받은 데이터를 담고,  
 그 값이  
-1--> sc로 전방점프  
-2--> sc로 달리기 모드 켜기  
-3--> self.stop=True, subprocess로 ros2_ws의 crosswalk_slow_stop_cmd.py 실행하고 끝나기를 기다림  
-4--> self.stop=True, 마찬가지로 avoid_go_oneshot.py 실행 후 기다림  
-5--> self.enter_lowmode()  
-6--> self.exit_lowmode()  
-7--> sc로 EconomicGait 모드 켜기  
-8--> sc로 BalanceStand  
-를 진행 한 뒤 다시 self.mission = None으로 설정해둔다.
+
+    1--> sc로 전방점프  
+    2--> sc로 달리기 모드 켜기  
+    3--> self.stop=True, subprocess로 ros2_ws의 crosswalk_slow_stop_cmd.py 실행하고 끝나기를 기다림  
+    4--> self.stop=True, 마찬가지로 avoid_go_oneshot.py 실행 후 기다림  
+    5--> self.enter_lowmode()  
+    6--> self.exit_lowmode()  
+    7--> sc로 EconomicGait 모드 켜기  
+    8--> sc로 BalanceStand  
+    를 진행 한 뒤 다시 self.mission = None으로 설정해둔다.
 
 stop_cmd의 콜백함수에선 받은 메시지에 따라 self.stop의 T/F를 설정한다.
-
 
 기타 메소드는 다음과 같다.  
 destroy_node(self)는 sc.StopMove()와 노드 파괴 담당,
@@ -406,16 +406,17 @@ destroy_node(self)는 sc.StopMove()와 노드 파괴 담당,
 send_mode(self, mode_value: int)는 받은 mode_value를 pub_mode로 pub한다.
 
 enter_lowmode()에선 sc와 msc로  
-sc 엎드리기,  
-msc로 sc의 제어권 종료,  
-self.ex(미리 정의한 low level control subprocess 객체) 실행  
-send_mode(1)  
-send_mode(2)
 
-exit_lowmode()에선 sc와 msc로  
-send_mode(3)  
-self.ex 종료  
-msc로 mcf모드 선택
+    sc 엎드리기,  
+    msc로 sc의 제어권 종료,  
+    self.ex(미리 정의한 low level control subprocess 객체) 실행  
+    send_mode(1)  
+    send_mode(2)
+
+    exit_lowmode()에선 sc와 msc로  
+    send_mode(3)  
+    self.ex 종료  
+    msc로 mcf모드 선택
 
 
 
@@ -425,23 +426,25 @@ msc로 mcf모드 선택
 action 구조, pose 생성, callback 체인의 형태는 기존 nav2, ros2 예제를 참고하였으나 queue를 통해 여럿을 등록하고 mission_cmd를 subprocess로 추가하는 것은 커스텀하였다.
 
 main에서는  
-FollowWaypointsClient 노드 생성,  
-subprocess로 "mission" topic으로 7을 한 번 pub,
 
-그리고 여러 waypoints와 mission_cmd 쌍을 정의하고 순서에 맞춰 queue에 등록한다.  
-node.enqueue_goal(wp, mission_cmd)로  
-wp1과 mission_cmd1  
-wp2와 mission_cmd2(=None)  
-wp3는 주석처리  
+    FollowWaypointsClient 노드 생성,  
+    subprocess로 "mission" topic으로 7을 한 번 pub,
 
-그리고 FollowWaypointsClient 노드를 실행한다.
+    그리고 여러 waypoints와 mission_cmd 쌍을 정의하고 순서에 맞춰 queue에 등록한다.  
+    node.enqueue_goal(wp, mission_cmd)로  
+    wp1과 mission_cmd1  
+    wp2와 mission_cmd2(=None)  
+    wp3는 주석처리  
+
+    그리고 FollowWaypointsClient 노드를 실행한다.
 
 
 해당 노드의 구조는 다음과 같다.
 
     init시  
     /follow_waypoints 라는 이름의 액션을 위한 액션 클라이언트 self._wp_client를 생성하고  
-    self.queue를 deque()로 만들어둔다. 메인의 enqueue_goal을 통해 wp, mission_cmd의 쌍을 여럿 담게 된다.
+    self.queue를 deque()로 만들어둔다.
+    메인의 enqueue_goal을 통해 wp, mission_cmd의 쌍을 여럿 담게 된다.
 
 노드 클래스의 메서드는 다음과 같다.
 
@@ -452,8 +455,7 @@ wp3는 주석처리
     _dequeue_and_send_next(self)는 self.queue가 비어있으면 노드를 닫고  
     그렇지 않으면 self.queue.popleft()로 poses, mission_cmd를 받아서 self._send_goal함수를 부른다.
 
-    self._send_goal(self, poses, mission_cmd)는  
-    goal_msg를 만들고  
+    self._send_goal(self, poses, mission_cmd)는 goal_msg를 만들고  
     /follow_waypoints 서버(nav2)가 켜져있는지 확인해서 켜질 때까지 기다리고  
     goal_msg를 해당 서버에게 전달해서 서버가 응답하면 self._feedback_cb 구독을 시작한다.  
     서버가 해당 goal을 수행할지 여부를 받아서 self._goal_response_cb 콜백 함수에 전달한다.
@@ -475,7 +477,8 @@ wp3는 주석처리
 메서드 체인들의 호출 흐름은 플래그 변수 self._active로 제어하는데, 현재 goal로 이동하고 있는지를 담는다.  
 
     self._active는 init에서 False로 시작해서  
-    enqueue_goal에서 인자로 받은 waypoints, mission_cmd를 deque에 등록한 다음에 현재 바로 _dequeue_and_send_next를 통해 _send_goal 할지를 판단할 때 쓰고  
+    enqueue_goal에서 인자로 받은 waypoints, mission_cmd를 deque에 등록한 다음에 
+    현재 바로 _dequeue_and_send_next를 통해 _send_goal 할지를 판단할 때 쓰고  
     _goal_response_callback 함수에서 액션 서버가 해당 goal을 거부한다면 False로 설정해주고  
     goal로의 이동이 끝나서 _result_cb이 불리면 해당 함수에서 mission_cmd를 실행한 다음 False로 설정해준다.
 
@@ -565,31 +568,32 @@ wp2, wp3를 enqueue하고 실행한다. misison_cmd는 두 경우 다 None이다
 
 
 #### go2_ctrl 바이너리
-unitree_rl_lab/deploy/robots/go2/build 에 있고  
-unitree_rl_lab/deploy/robots/go2/src, unitree_rl_lab/deploy/include 등의 cpp 코드를 통해 빌드한다.
+
+    unitree_rl_lab/deploy/robots/go2/build 에 있고  
+    unitree_rl_lab/deploy/robots/go2/src, unitree_rl_lab/deploy/include 등의 cpp 코드를 통해 빌드한다.
 
 
-unitree_rl_lab/deploy/robots/go2/main.cpp  
-    udp_cmd_is(int want) 함수에서 take_mode_cmd() 함수를 이용해 udp로 읽은 값을 받는다.  
-    take_mode_cmd()는 cmd_bufer.h에 있고 cmd_buffer.h와 udp_receiver.h를 include한다.
+    unitree_rl_lab/deploy/robots/go2/main.cpp  
+        udp_cmd_is(int want) 함수에서 take_mode_cmd() 함수를 이용해 udp로 읽은 값을 받는다.  
+        take_mode_cmd()는 cmd_bufer.h에 있고 cmd_buffer.h와 udp_receiver.h를 include한다.
 
-cmd_buffer.h  
-    이는 ~/unitree_rl_lab/deploy/include에 버퍼 구조체가 정의되어 있다.  
-    버퍼 구조체는 vz, vy, wz, mode_cmd를 담는다.  
-    그리고 해당 버퍼의 주소를 전달하는 cmd_buffer() 함수와 값을 1회성으로 소비하는 take_mode_cmd()가 정의됨.
+    cmd_buffer.h  
+        이는 ~/unitree_rl_lab/deploy/include에 버퍼 구조체가 정의되어 있다.  
+        버퍼 구조체는 vz, vy, wz, mode_cmd를 담는다.  
+        그리고 해당 버퍼의 주소를 전달하는 cmd_buffer() 함수와 값을 1회성으로 소비하는 take_mode_cmd()가 정의됨.
 
-udp_receiver.h  
-    해당 버퍼에다가 udp로 받은 값을 저장하는 것은 같은 폴더의 udp_receiver.h에 있다.  
-    float 형식으로 3개가 오면 vx, vy, wz로 인식하여 buf의 해당 멤버 변수에 저장하고 아니면 정수로 읽어서 buf의 mode_cmd에 저장한다.
+    udp_receiver.h  
+        해당 버퍼에다가 udp로 받은 값을 저장하는 것은 같은 폴더의 udp_receiver.h에 있다.  
+        float 형식으로 3개가 오면 vx, vy, wz로 인식하여 buf의 해당 멤버 변수에 저장하고 아니면 정수로 읽어서 buf의 mode_cmd에 저장한다.
 
 
-UDP로 mode_cmd로 수신한 값에 따라 FSM에서 정의한 모드 3개 사이에서 순차적으로 바꾼다.  
-1 Passive -> FixStand  
-2 FixStand -> Velocity(RLBase)  
-3 Velocity -> SitDown  
-4 udp_bridge_node.py에서 여기로 전달하기 전에 스스로 종료(ctrl + c)
+    UDP로 mode_cmd로 수신한 값에 따라 FSM에서 정의한 모드 3개 사이에서 순차적으로 바꾼다.  
+    1 Passive -> FixStand  
+    2 FixStand -> Velocity(RLBase)  
+    3 Velocity -> SitDown  
+    4 udp_bridge_node.py에서 여기로 전달하기 전에 스스로 종료(ctrl + c)
 
-그리고 ~/unitree_rl_lab/deploy/include/FSM/CtrlFSM.h 가 FSM을 돌린다.
+    그리고 ~/unitree_rl_lab/deploy/include/FSM/CtrlFSM.h 가 FSM을 돌린다.
 
 
 
@@ -613,39 +617,40 @@ enqueue 한다.
 
 #### stair.py
 
-sc 연결  
-yaw값 p제어 위한 kp튜닝  
-auto_exit_sec 10초 설정  
-/lowstate 대신 /amcl_pose를 구독해서 여기서 현재 yaw 값을 받는다.  
-msg의 pose orientation에서 q를 뽑는다.  
-vx=vy=0.0, wz는 msg의 q에서 계산한 현재 yaw와 yaw target 간의 차로 p제어해서  
-sc.Move로 이동한다.
+    sc 연결  
+    yaw값 p제어 위한 kp튜닝  
+    auto_exit_sec 10초 설정  
+    /lowstate 대신 /amcl_pose를 구독해서 여기서 현재 yaw 값을 받는다.  
+    msg의 pose orientation에서 q를 뽑는다.  
+    vx=vy=0.0, wz는 msg의 q에서 계산한 현재 yaw와 yaw target 간의 차로 p제어해서  
+    sc.Move로 이동한다.
 
 #### avoid_go_oneshot_move.py
-동적 장애물의 위치를 YOLO로 바운딩 박스를 그려서 알아내고, 해당 박스의 위치가 시야의 가장자리(박스 중심의 x값이 하위 20% 또는 상위 80% 위치)에 있을 때 빠르게 지나가도록 한다.
 
-import 하는 것은  
+    동적 장애물의 위치를 YOLO로 바운딩 박스를 그려서 알아내고, 해당 박스의 위치가 시야의 가장자리(박스 중심의 x값이 하위 20% 또는 상위 80% 위치)에 있을 때 빠르게 지나가도록 한다.
 
-    unitree_sdk2py에서 SportClient, VideoClient  
-    YOLO  
-    LowState  
-    등이다.
+    import 하는 것은  
 
-ObstacleDecisionNode  
-ros2_ws/src/obstacle_pkg/models/best.pt의 장애물 탐지를 위해 학습해둔 신경망 로드  
-cmd_pub 퍼블리셔로 'stop_cmd' 토픽 발행하도록 함  
-sc연결, yaw p제어 위한 값 지정, 달릴 시간 2초 지정
+        unitree_sdk2py에서 SportClient, VideoClient  
+        YOLO  
+        LowState  
+        등이다.
 
-멀티스레드로 video_loop 스레드와 yolo_worker 스레드로 나눴다.
+    ObstacleDecisionNode  
+    ros2_ws/src/obstacle_pkg/models/best.pt의 장애물 탐지를 위해 학습해둔 신경망 로드  
+    cmd_pub 퍼블리셔로 'stop_cmd' 토픽 발행하도록 함  
+    sc연결, yaw p제어 위한 값 지정, 달릴 시간 2초 지정
 
-메서드는  
-stair_callback에서는 LowState에서 yaw를 구해 p제어를 수행한하고 sc.Move로 명령한다.
+    멀티스레드로 video_loop 스레드와 yolo_worker 스레드로 나눴다.
 
-publish_cmd에선 'stop_cmd' 토픽으로 앞으로 가게 하는 0을 발행한다.
+    메서드는  
+    stair_callback에서는 LowState에서 yaw를 구해 p제어를 수행한하고 sc.Move로 명령한다.
 
-GPU 없는 NUC에서 iGPU가 아닌 CPU로 YOLO추론을 돌린다.  
-iGPU를 시도해봤고 cpu보다 훨씬 빨리 추론이 가능하지만 얼마 못 버티고 다시 cpu로 롤백해서 그냥 CPU만 이용한다.  
-Coral TPU도 시도했고 훨씬 빠르지만, 메인 개발 컴에서 NUC으로 옮기며 모델이 가벼워지고, 따라서 출력 텐서가 복잡해졌는데, 여기서 바운딩 박스의 위치값을 뽑기가 힘들어 포기하고 cpu를 썼다.
+    publish_cmd에선 'stop_cmd' 토픽으로 앞으로 가게 하는 0을 발행한다.
+
+    GPU 없는 NUC에서 iGPU가 아닌 CPU로 YOLO추론을 돌린다.  
+    iGPU를 시도해봤고 cpu보다 훨씬 빨리 추론이 가능하지만 얼마 못 버티고 다시 cpu로 롤백해서 그냥 CPU만 이용한다.  
+    Coral TPU도 시도했고 훨씬 빠르지만, 메인 개발 컴에서 NUC으로 옮기며 모델이 가벼워지고, 따라서 출력 텐서가 복잡해졌는데, 여기서 바운딩 박스의 위치값을 뽑기가 힘들어 포기하고 cpu를 썼다.
 
 
 #### climb_stair.py
@@ -666,12 +671,13 @@ Coral TPU도 시도했고 훨씬 빠르지만, 메인 개발 컴에서 NUC으로
     직진, 좌회전, 직진, 자회전 --> 계단 위에서 회전만을 담당한다.
 
 #### 기타 코드들
-lidar_test.py
+
+lidar_test.py  
     테스트용: 라이다로 벽 가운데 유지하게 vy p제어 하면서 vx 1.0 테스트  
-map0_total.py
+map0_total.py  
     하드코딩으로 벽간 거리 일정하게 유지하며 점프 앞까지 이동, 점프, 장애물 앞까지 이동하도록  
-map3_total.py
-    하드코딩임  
+map3_total.py  
+    하드코딩임   
     wallfollower로 1초 전진  
     좌회전  
     5.2초 전진  
@@ -679,25 +685,26 @@ map3_total.py
     localization켜기, 기다린다음,  
     좌회전  
     -->계단 내려온 다음이다.  
-obstacle_lidar.py
+
+obstacle_lidar.py  
         라이다로 장애물 보고 지나가기
 
-pose_estimator.py
+pose_estimator.py  
     rviz 없이 pose estimate 가능하도록 함  
     known pose 모드: /initialpose로 발행한 위치로부터 localization  
     global localization 모드: 맵 전체에 대해 localization  
     이는 코드에서 사용 안함
 
-process_executor.py
+process_executor.py  
     ExecConfig, BaseProcessExecutor 정의해둠.  
     다른 코드에서 이를 import해 사용한다.
 
 
-run_localization_hardcoding2.py
+run_localization_hardcoding2.py  
     오류난 경우 마지막 직선 코스의 crosswalk에서 부터 시작하는 코드.  
     localization 켜고 /initialpose 보내서  
     crosswalk 건너기
 
-crosswalk_amcl_lidar_clean_finish_different_node.py
+crosswalk_amcl_lidar_clean_finish_different_node.py  
     신호등 본 다음에 trotrun으로 달리는데  
     시간 제한 두고, yaw, vy 각각 p제어 하면서 달리기
