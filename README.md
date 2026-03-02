@@ -1,7 +1,7 @@
 # go2-track-navigation  
 
 ## Overview
-**Code for unitree GO2 navigation around given course in POSCO Industrial AI-Robot Challenge 2025 summer, made by Team 용과함께 (임준범, 전재원, 박시형, 이서윤, 신경석) from MR, KAIST**
+**Code for unitree GO2 navigation around given course in POSCO Industrial AI-Robot Challenge 2025 summer, made by Team 용과함께 from MR, KAIST**
 
 Unitree Go2 로봇의 자율주행을 위해 ROS2를 기반으로 NAV2의 navigation, p제어, 학습시킨 RL policy, YOLO, unitree sdk의 highlevel api인 SportClient 등을 통합하여 작성했다.
 
@@ -720,4 +720,6 @@ crosswalk_amcl_lidar_clean_finish_different_node.py
     시간 제한 두고, yaw, vy 각각 p제어 하면서 달리기
 
 
-#### 기타정보
+### 기타정보  
+
+팀 용과함께의 멤버들: 임준범, 전재원, 박시형, 이서윤, 신경석
